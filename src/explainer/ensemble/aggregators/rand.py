@@ -4,7 +4,7 @@ from abc import ABC
 
 from src.dataset.instances.graph import GraphInstance
 from src.core.explainer_base import Explainer
-from src.explainer.ensemble.explanation_aggregator_base import ExplanationAggregator
+from src.explainer.ensemble.aggregators.base import ExplanationAggregator
 from src.evaluation.evaluation_metric_ged import GraphEditDistanceMetric
 import numpy as np
 
@@ -36,7 +36,10 @@ class ExplanationRandom(ExplanationAggregator):
                 changes = (org_instance.data != exp.data).astype(int)
                 all_changes_matrix |= changes
 
-        new_edges = np.nonzero(all_changes_matrix)
+        changed_edges = np.nonzero(all_changes_matrix)
+        num_changed_edges = len(changed_edges[0])
+        new_edges = [[changed_edges[0][i], changed_edges[1][i]] for i in range(num_changed_edges)]
+        new_edges = np.array(new_edges)
 
         # increase the number of random modifications
         for i in range(1, k):
@@ -56,6 +59,9 @@ class ExplanationRandom(ExplanationAggregator):
                                        label=0,
                                        data=cf_cand_matrix,
                                        node_features=org_instance.node_features)
+                
+                for manipulator in org_instance._dataset.manipulators:
+                    manipulator._process_instance(result)
                 
                 # if a counterfactual was found return that
                 l_cf_cand = self.oracle.predict(result)
